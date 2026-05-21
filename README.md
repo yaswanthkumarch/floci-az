@@ -7,14 +7,17 @@ Tech Stack: Java, Quarkus, Docker-in-Docker for Functions. Artemis sidecar for E
 -->
 
 <p align="center">
-  <img src="floci-az-banner.svg" alt="Floci"/>
+  <img src="floci-az-banner.svg" alt="Floci AZ" />
+  <p align="center">
+    <strong>Light, fluffy, and always free</strong><br />
+    No account. No auth token. No feature gates. Just <code>docker compose up</code>.
+  </p>
 </p>
 
 <p align="center">
   <a href="https://github.com/floci-io/floci-az/releases/latest"><img src="https://img.shields.io/github/v/release/floci-io/floci-az?label=latest%20release&color=blue" alt="Latest Release"></a>
   <a href="https://github.com/floci-io/floci-az/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/floci-io/floci-az/release.yml?label=build" alt="Build Status"></a>
   <a href="https://hub.docker.com/r/floci/floci-az"><img src="https://img.shields.io/docker/pulls/floci/floci-az?label=docker%20pulls" alt="Docker Pulls"></a>
-  <a href="https://hub.docker.com/r/floci/floci-az"><img src="https://img.shields.io/docker/image-size/floci/floci-az/latest?label=image%20size" alt="Docker Image Size"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"></a>
 </p>
 
@@ -22,18 +25,20 @@ Tech Stack: Java, Quarkus, Docker-in-Docker for Functions. Artemis sidecar for E
   A free, open-source local Azure emulator — Storage, Cosmos DB, Functions, App Configuration, Key Vault, and Event Hubs. No account. No feature gates. Just&nbsp;<code>docker compose up</code>.
 </p>
 
+<p align="center">
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#what-is-floci-az">Features</a> ·
+  <a href="#sdk-integration">SDKs</a> ·
+  <a href="#compatibility-testing">Compatibility</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="https://floci.io/floci-az/">Docs</a>
+</p>
+
 ---
 
-### 📌 At a Glance
+## What is floci-az?
 
-* **Target Cloud:** Microsoft Azure (NOT AWS).
-* **Unified Port:** `4577` (All services share this port).
-* **Default Account:** `devstoreaccount1` / Key: `Eby8vdM02xNO...`
-* **Functions:** Real execution via Docker-in-Docker (Node, Python, Java, .NET).
-
-> The companion to [floci](https://github.com/floci-io/floci) — floci emulates AWS, floci-az emulates Azure.
-
-## 🚀 Why floci-az?
+Floci AZ is a free, open-source local Azure emulator for development, testing, and CI. It gives you Azure-compatible services on your machine without requiring a cloud account, auth token, or paid feature gates. Point your Azure SDK or CLI at `http://localhost:4577` and keep your existing workflows.
 
 | Feature             | floci-az                  | [Azurite](https://github.com/Azure/Azurite) | [Functions Core Tools](https://github.com/Azure/azure-functions-core-tools) |
 |---------------------|---------------------------|---------------------------------------------|-----------------------------------------------------------------------------|
@@ -216,16 +221,7 @@ services:
     ports:
       - "4577:4577"
     volumes:
-      # Local directory bind mount (default)
-      - ./data:/app/data
-
-      # OR named volume (optional):
-      # - floci-az-data:/app/data
-
       - /var/run/docker.sock:/var/run/docker.sock  # required for Azure Functions
-
-#volumes:
-#  floci-az-data:
 ```
 
 ```bash
@@ -241,8 +237,7 @@ docker run -d --name floci-az \
   floci/floci-az:latest
 ```
 
-All services are available at `http://localhost:4577`. Use any account name and key — in `dev` auth mode credentials are
-not validated.
+All services are available at `http://localhost:4577`. Use any account name and key — in `dev` auth mode credentials are not validated.
 
 > **Azure Functions** requires access to the Docker socket so floci-az can spawn runtime containers on demand. Mount
 `/var/run/docker.sock` as shown above. If you don't use Functions, the socket mount is optional.
@@ -318,12 +313,53 @@ floci-az uses path-style routing:
 
 The standard development storage connection string works out of the box:
 
+<details>
+<summary>Standard development storage connection string</summary>
+
 ```
 DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMh0==;BlobEndpoint=http://localhost:4577/devstoreaccount1;QueueEndpoint=http://localhost:4577/devstoreaccount1-queue;TableEndpoint=http://localhost:4577/devstoreaccount1-table;
 ```
 
+</details>
+
+<details>
+<summary>When your app runs in a separate container</summary>
+
+Set the service name as the hostname so returned URLs resolve correctly inside Docker Compose:
+
+```yaml
+services:
+  floci-az:
+    image: floci/floci-az:latest
+    ports:
+      - "4577:4577"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - app-net
+
+  my-app:
+    environment:
+      AZURE_BLOB_ENDPOINT: http://floci-az:4577/devstoreaccount1
+      AZURE_QUEUE_ENDPOINT: http://floci-az:4577/devstoreaccount1-queue
+      AZURE_TABLE_ENDPOINT: http://floci-az:4577/devstoreaccount1-table
+    depends_on:
+      floci-az:
+        condition: service_healthy
+    networks:
+      - app-net
+
+networks:
+  app-net:
+```
+
+</details>
+
+<details>
+<summary><strong>Python</strong></summary>
+
 ```python
-# Python (azure-storage-blob)
+# azure-storage-blob
 from azure.storage.blob import BlobServiceClient
 
 conn_str = (
@@ -337,13 +373,11 @@ client.create_container("my-container")
 
 blob = client.get_container_client("my-container").get_blob_client("hello.txt")
 blob.upload_blob(b"Hello from floci-az!")
-
-data = blob.download_blob().readall()
-print(data)
+print(blob.download_blob().readall())
 ```
 
 ```python
-# Python (azure-storage-queue)
+# azure-storage-queue
 from azure.storage.queue import QueueServiceClient
 
 conn_str = (
@@ -355,13 +389,11 @@ conn_str = (
 client = QueueServiceClient.from_connection_string(conn_str)
 queue = client.create_queue("my-queue")
 queue.send_message("Hello from floci-az!")
-
-messages = list(queue.receive_messages())
-print(messages[0].content)
+print(list(queue.receive_messages())[0].content)
 ```
 
 ```python
-# Python (azure-data-tables)
+# azure-data-tables
 from azure.data.tables import TableServiceClient
 
 conn_str = (
@@ -373,186 +405,189 @@ conn_str = (
 service = TableServiceClient.from_connection_string(conn_str)
 table = service.create_table("MyTable")
 table.create_entity({"PartitionKey": "pk1", "RowKey": "rk1", "Value": "hello"})
-
-entity = table.get_entity("pk1", "rk1")
-print(entity["Value"])
+print(table.get_entity("pk1", "rk1")["Value"])
 ```
+
+</details>
+
+<details>
+<summary><strong>Java</strong></summary>
 
 ```java
-// Java (Azure SDK for Java)
 BlobServiceClient client = new BlobServiceClientBuilder()
-                .connectionString(
-                        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;" +
-                        "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMh0==;" +
-                        "BlobEndpoint=http://localhost:4577/devstoreaccount1;")
-                .buildClient();
+    .connectionString(
+        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;" +
+        "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMh0==;" +
+        "BlobEndpoint=http://localhost:4577/devstoreaccount1;")
+    .buildClient();
 
-client.
-
-createBlobContainer("my-container");
+client.createBlobContainer("my-container");
 
 BlobClient blob = client.getBlobContainerClient("my-container").getBlobClient("hello.txt");
-blob.
-
-upload(new ByteArrayInputStream("Hello from floci-az!".getBytes()),20);
-
-BlobDownloadResponse response = blob.downloadWithResponse(/* ... */);
+blob.upload(new ByteArrayInputStream("Hello from floci-az!".getBytes()), 20);
 ```
 
+</details>
+
+<details>
+<summary><strong>Node.js / TypeScript</strong></summary>
+
 ```typescript
-// Node.js / TypeScript (Azure SDK)
-import {BlobServiceClient} from "@azure/storage-blob";
+import { BlobServiceClient } from "@azure/storage-blob";
 
 const CONN =
-    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;" +
-    "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMh0==;" +
-    "BlobEndpoint=http://localhost:4577/devstoreaccount1;";
+  "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;" +
+  "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMh0==;" +
+  "BlobEndpoint=http://localhost:4577/devstoreaccount1;";
 
 const client = BlobServiceClient.fromConnectionString(CONN);
-const {containerClient} = await client.createContainer("my-container");
+const { containerClient } = await client.createContainer("my-container");
 
 const blob = containerClient.getBlockBlobClient("hello.txt");
 await blob.upload(Buffer.from("Hello from floci-az!"), 20);
-
-const downloaded = await blob.downloadToBuffer();
-console.log(downloaded.toString());
+console.log((await blob.downloadToBuffer()).toString());
 ```
 
-### Azure Functions
+</details>
 
-Functions are managed via a REST management API and invoked over HTTP. The emulator spawns a real Azure Functions
-runtime container (node, python, java, or dotnet) on first invoke and keeps it warm for subsequent calls.
+<details>
+<summary><strong>Azure Functions</strong></summary>
+
+Functions are managed via a REST management API and invoked over HTTP. The emulator spawns a real Azure Functions runtime container on first invoke and keeps it warm for subsequent calls.
 
 ```bash
 BASE="http://localhost:4577/devstoreaccount1-functions"
 
-# 1. Create a function app
+# Create a function app
 curl -s -X PUT "$BASE/admin/apps/my-app" \
   -H "Content-Type: application/json" \
   -d '{"runtime":"node","environment":{"MY_VAR":"hello"}}'
 
-# 2. Deploy a function (ZIP of your function code, base64-encoded)
+# Deploy a function (ZIP of your function code, base64-encoded)
 ZIP_B64=$(base64 < my-function.zip)
 curl -s -X PUT "$BASE/admin/apps/my-app/functions/hello" \
   -H "Content-Type: application/json" \
   -d "{\"handler\":\"index.handler\",\"timeoutSeconds\":60,\"zipBase64\":\"$ZIP_B64\"}"
 
-# 3. Invoke
+# Invoke
 curl "$BASE/api/my-app/hello?msg=world"
-```
-
-```bash
-# Management endpoints
-GET    $BASE/admin/apps                                  # list apps
-PUT    $BASE/admin/apps/{app}                            # create / update app
-GET    $BASE/admin/apps/{app}                            # get app
-DELETE $BASE/admin/apps/{app}                            # delete app + all functions
-
-GET    $BASE/admin/apps/{app}/functions                  # list functions
-PUT    $BASE/admin/apps/{app}/functions/{fn}             # deploy function
-GET    $BASE/admin/apps/{app}/functions/{fn}             # get function
-DELETE $BASE/admin/apps/{app}/functions/{fn}             # delete function
-
-# Invocation
-GET|POST  $BASE/api/{app}/{fn}[?query...]                # invoke HTTP trigger
 ```
 
 Supported runtimes: `node`, `python`, `java`, `dotnet`.
 
-## Table Storage — Supported Operations
+</details>
 
-All standard Azure Data Tables SDK operations are supported. Below is a full reference.
+<details>
+<summary><strong>Azure CLI (azfloci)</strong></summary>
 
-### Entity operations
+`azfloci` is a companion CLI that acts as a transparent proxy for the official Azure CLI (`az`). It automatically injects the correct connection strings and disables SSL verification so you can use standard `az` commands against the local emulator.
 
-| Operation                | Method            | Path                                                      |
-|--------------------------|-------------------|-----------------------------------------------------------|
-| Insert entity            | `POST`            | `/{account}-table/{Table}`                                |
-| Get entity               | `GET`             | `/{account}-table/{Table}(PartitionKey='pk',RowKey='rk')` |
-| Replace entity (PUT)     | `PUT`             | `/{account}-table/{Table}(PartitionKey='pk',RowKey='rk')` |
-| Merge entity (PATCH)     | `MERGE` / `PATCH` | `/{account}-table/{Table}(PartitionKey='pk',RowKey='rk')` |
-| Delete entity            | `DELETE`          | `/{account}-table/{Table}(PartitionKey='pk',RowKey='rk')` |
-| List / query entities    | `GET`             | `/{account}-table/{Table}`                                |
-| Entity Group Transaction | `POST`            | `/{account}-table/$batch`                                 |
+```bash
+# Optional: alias azfloci as az for a seamless experience
+alias az='python3 /path/to/floci-az/azfloci/azfloci.py'
 
-### OData query parameters
+# Blob Storage
+az storage container create --name my-container
+az storage blob upload --container-name my-container --name hello.txt --file hello.txt
+az storage blob list --container-name my-container --output table
 
-| Parameter                         | Description                                  | Example                                |
-|-----------------------------------|----------------------------------------------|----------------------------------------|
-| `$filter`                         | Server-side filter expression                | `PartitionKey eq 'p1' and Score gt 10` |
-| `$select`                         | Project only the specified fields            | `$select=Name,Score`                   |
-| `$top`                            | Maximum entities to return per page (≤ 1000) | `$top=50`                              |
-| `NextPartitionKey` / `NextRowKey` | Resume from a continuation token             | Set automatically by SDKs              |
+# Queue Storage
+az storage queue create --name my-queue
+az storage message put --queue-name my-queue --content "Hello from CLI"
 
-**Supported `$filter` operators:** `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `and`, `or`, `not`
-
-**Supported `$filter` functions:** `startswith(prop, 'val')`, `endswith(prop, 'val')`, `substringof('val', prop)`
-
-**Supported value types in filters:** string literals, integers, doubles, booleans, `null`, `datetime'...'`, `guid'...'`
-
-**Typed property annotations** (`Edm.Int64`, `Edm.Int32`, `Edm.Double`, `Edm.DateTime`, `Edm.Guid`, `Edm.Boolean`) are
-stored and returned transparently and are used for correct type coercion in filter comparisons.
-
-### ETag / optimistic concurrency
-
-`If-Match` is honoured on `PUT`, `MERGE`, `PATCH`, and `DELETE`:
-
-- `If-Match: *` — succeed only if the entity exists
-- `If-Match: "etag-value"` — succeed only if the stored ETag matches; returns **412 Precondition Failed** otherwise
-
-### `Prefer` header on insert
-
-| Header value                       | Response                                    |
-|------------------------------------|---------------------------------------------|
-| `Prefer: return-no-content`        | `204 No Content` + `ETag` header            |
-| `Prefer: return-content` or absent | `201 Created` + entity body + `ETag` header |
-
-### Entity Group Transactions (`$batch`)
-
-Atomic execution of multiple operations against a single partition key. The request uses the standard Azure
-`multipart/mixed` format; the emulator executes all operations and rolls back on any failure.
-
-```python
-# Python
-table.submit_transaction([
-    ("create", {"PartitionKey": "p1", "RowKey": "r1", "value": "hello"}),
-    ("upsert", {"PartitionKey": "p1", "RowKey": "r2", "value": "world"}),
-    ("delete", {"PartitionKey": "p1", "RowKey": "r3"}),
-])
+# Table Storage
+az storage table create --name MyTable
 ```
 
-```typescript
-// Node.js / TypeScript
-await table.submitTransaction([
-    ["create", {partitionKey: "p1", rowKey: "r1", value: "hello"}],
-    ["upsert", {partitionKey: "p1", rowKey: "r2", value: "world"}],
-    ["delete", {partitionKey: "p1", rowKey: "r3"}],
-]);
+`azfloci` automatically detects `--account-name` (defaulting to `devstoreaccount1`) and constructs the appropriate local endpoint.
+
+</details>
+
+## Features
+
+<details open>
+<summary><strong>Local Azure without the cloud account</strong></summary>
+
+Run Azure-compatible services locally without an Azure account, auth token, or paid feature gates.
+
+</details>
+
+<details>
+<summary><strong>Real Docker where fidelity matters</strong></summary>
+
+Azure Functions, Event Hubs, and Cosmos DB engine APIs (MongoDB, PostgreSQL, Cassandra, Gremlin) use real Docker-backed execution instead of shallow mocks.
+
+</details>
+
+<details>
+<summary><strong>Drop-in Azure SDK compatibility</strong></summary>
+
+Point standard Azure SDK clients at `http://localhost:4577`. Existing connection strings, credentials, and SDK workflows stay unchanged.
+
+</details>
+
+<details>
+<summary><strong>Fast enough for CI</strong></summary>
+
+The native image starts in milliseconds and keeps idle memory low, making it practical for local development and test pipelines.
+
+</details>
+
+<details>
+<summary><strong>Configurable persistence</strong></summary>
+
+Choose from in-memory, persistent, hybrid, and write-ahead log storage depending on the durability profile you need.
+
+</details>
+
+## Real Docker Integration
+
+Floci AZ uses real Docker containers when in-process emulation would reduce fidelity.
+
+| Service | Default image | What is real |
+|---|---|---|
+| Azure Functions | `mcr.microsoft.com/azure-functions/<runtime>` | Real Azure Functions runtime, warm container pool |
+| Event Hubs AMQP | `apache/activemq-artemis` | Full AMQP 1.0 broker |
+| Event Hubs Kafka | `redpandadata/redpanda` | Kafka-compatible broker (opt-in) |
+| Cosmos DB MongoDB | `mongo:7` | MongoDB Community Server, full wire protocol |
+| Cosmos DB PostgreSQL | `citusdata/citus` | Citus — the exact engine Azure runs |
+| Cosmos DB Cassandra | `scylladb/scylla:6.2` | CQL-compatible drop-in |
+| Cosmos DB Gremlin | `tinkerpop/gremlin-server` | Apache TinkerPop — standard Gremlin traversals |
+
+Docker-backed services require the Docker socket:
+
+```bash
+docker run -d --name floci-az \
+  -p 4577:4577 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  floci/floci-az:latest
 ```
 
-```java
-// Java
-table.submitTransaction(List.of(
-                                new TableTransactionAction(TableTransactionActionType.CREATE,
-        new TableEntity("p1", "r1").
+### Cosmos DB engine configuration
 
-addProperty("value","hello")),
-        new
+All Cosmos DB engines are disabled by default — enable only the APIs your application uses.
 
-TableTransactionAction(TableTransactionActionType.UPSERT_REPLACE,
-        new TableEntity("p1", "r2").
+| Variable | Default | Engine |
+|---|---|---|
+| `FLOCI_AZ_SERVICES_COSMOS_ENGINES_MONGODB_ENABLED` | `false` | `mongo:7` |
+| `FLOCI_AZ_SERVICES_COSMOS_ENGINES_POSTGRESQL_ENABLED` | `false` | `citusdata/citus` |
+| `FLOCI_AZ_SERVICES_COSMOS_ENGINES_CASSANDRA_ENABLED` | `false` | `scylladb/scylla:6.2` |
+| `FLOCI_AZ_SERVICES_COSMOS_ENGINES_GREMLIN_ENABLED` | `false` | `tinkerpop/gremlin-server` |
+| `FLOCI_AZ_SERVICES_COSMOS_ENGINES_NOSQL_ENABLED` | `false` | Embedded (no Docker) |
+| `FLOCI_AZ_SERVICES_COSMOS_ENGINES_TABLE_ENABLED` | `false` | Embedded (no Docker) |
 
-addProperty("value","world")),
-        new
+Each Docker-backed engine exposes a `/connect` endpoint that returns the connection string:
 
-TableTransactionAction(TableTransactionActionType.DELETE,
-        new TableEntity("p1", "r3"))
-        ));
+```bash
+curl http://localhost:4577/devstoreaccount1-cosmos-mongo/connect
+# → {"api":"MONGODB","host":"localhost","port":27017,"connectionString":"mongodb://localhost:27017/","status":"running"}
 ```
+
+> Do not publish engine ports (`27017`, `5432`, etc.) on the `floci-az` service. Engines are launched as sibling containers by the host Docker daemon, so they bind ports directly on the host.
 
 ## Compatibility Testing
 
-> For full validation against real Azure SDK workflows, see the [compatibility-tests](./compatibility-tests/) directory.
+The [`compatibility-tests`](./compatibility-tests/) directory validates Floci AZ across SDKs.
 
 | Module               | Language | SDK                                                                            | Tests |
 |----------------------|----------|--------------------------------------------------------------------------------|------:|
@@ -567,8 +602,8 @@ TableTransactionAction(TableTransactionActionType.DELETE,
 Run all compatibility tests against a running container:
 
 ```bash
-make test-python
 make test-java-compat
+make test-python
 make test-node-compat
 make test-appconfig
 make test-keyvault
@@ -576,14 +611,35 @@ make test-eventhub
 make test-cosmos-all    # Cosmos engine tests: MongoDB · PostgreSQL · Cassandra · Gremlin · Table · NoSQL (requires Docker)
 ```
 
+## Migrating from Azurite
+
+Azurite users can point their existing connection strings at Floci AZ with a single endpoint change.
+
+```
+# Before (Azurite default)
+DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02...;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
+
+# After (Floci AZ — single port)
+DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02...;BlobEndpoint=http://localhost:4577/devstoreaccount1;QueueEndpoint=http://localhost:4577/devstoreaccount1-queue;TableEndpoint=http://localhost:4577/devstoreaccount1-table;
+```
+
+The account name and key are the same. Floci AZ consolidates all services onto port `4577` — no more separate ports per service.
+
 ## Image Tags
 
-| Tag                   | Description                                         |
-|-----------------------|-----------------------------------------------------|
-| `latest`              | Native image — **<100ms** startup **(recommended)** |
-| `latest-jvm`          | JVM image                                           |
-| `x.y.z` / `x.y.z-jvm` | Pinned releases                                     |
-| `edge`                | Weekly build from main                              |
+| Channel | Tag |
+|---|---|
+| Release, floating | `latest` (native) · `latest-jvm` |
+| Release, pinned | `x.y.z` · `x.y.z-jvm` |
+| Nightly | `edge` |
+
+Use `latest` for stable releases, a pinned version for reproducible builds, and `edge` to track `main`.
+
+```yaml
+image: floci/floci-az:latest      # recommended
+image: floci/floci-az:0.3.0       # pinned release
+image: floci/floci-az:edge        # track main
+```
 
 ## Configuration
 
@@ -879,6 +935,28 @@ networks:
   app-net:
 ```
 
+## Community
+
+Join the Floci community on [Slack](https://join.slack.com/t/floci/shared_invite/zt-3tjn02s3q-A00kEjJ1cZxsg_imTfy6Cw) or [GitHub Discussions](https://github.com/orgs/floci-io/discussions). Feature ideas, compatibility questions, design tradeoffs, and rough proposals are welcome.
+
+## Star History
+
+<p align="center">
+  <a href="https://www.star-history.com/?repos=floci-io%2Ffloci-az&type=date&legend=top-left">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=floci-io/floci-az&type=date&theme=dark&legend=top-left" />
+      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=floci-io/floci-az&type=date&legend=top-left" />
+      <img width="600" alt="Star History Chart" src="https://api.star-history.com/chart?repos=floci-io/floci-az&type=date&legend=top-left" />
+    </picture>
+  </a>
+</p>
+
+## Contributors
+
+<a href="https://github.com/floci-io/floci-az/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=floci-io/floci-az&max=100&columns=20" alt="Contributors" />
+</a>
+
 ## License
 
-MIT — use it however you want.
+MIT. Use it however you want.

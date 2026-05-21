@@ -5,11 +5,7 @@ on:
     paths:
       - 'src/**'
       - 'pom.xml'
-      - '.mvn/**'
-      - 'mvnw'
-      - 'mvnw.cmd'
       - 'docker/Dockerfile.jvm-package'
-      - 'docker-compose.yml'
       - 'compatibility-tests/**'
       - '.github/workflows/compatibility.yml'
 

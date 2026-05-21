@@ -31,3 +31,5 @@ test-results.xml
 
 # MkDocs build output
 site/
+
+emulator.log

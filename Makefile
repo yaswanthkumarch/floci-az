@@ -9,7 +9,6 @@ PID_FILE       = emulator.pid
 PYTHON_DIR     = compatibility-tests/sdk-test-python
 JAVA_DIR       = compatibility-tests/sdk-test-java
 NODE_DIR       = compatibility-tests/sdk-test-node
-APPCONFIG_DIR  = compatibility-tests/sdk-test-appconfig
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 
@@ -83,13 +82,6 @@ test-node-compat:
 	@cd $(NODE_DIR) && \
 	npm install --silent && \
 	npm test
-
-test-appconfig:
-	@echo "==> App Configuration SDK compatibility tests"
-	@cd $(APPCONFIG_DIR) && \
-	if [ ! -d venv ]; then python3 -m venv venv; fi && \
-	./venv/bin/pip install -q -r requirements.txt && \
-	./venv/bin/pytest tests/ -v
 
 test-cosmos:
 	@echo "==> Cosmos DB NoSQL (in-memory) compatibility tests"

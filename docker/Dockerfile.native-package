@@ -42,6 +42,23 @@ RUN mv /app/*-runner /app/application && chmod +x /app/application
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+LABEL org.opencontainers.image.title="Floci AZ" \
+      org.opencontainers.image.description="Local Azure emulator — open-source Azure SDK compatible emulator" \
+      org.opencontainers.image.url="https://floci.io" \
+      org.opencontainers.image.source="https://github.com/floci-io/floci-az" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.vendor="Floci" \
+      description="Local Azure emulator — open-source Azure SDK compatible emulator" \
+      io.k8s.description="Local Azure emulator — open-source Azure SDK compatible emulator" \
+      io.k8s.display-name="Floci AZ" \
+      io.openshift.expose-services="4577:tcp" \
+      io.openshift.tags="floci-az azure-emulator" \
+      maintainer="Floci <https://github.com/floci-io/floci-az>" \
+      name="floci/floci-az" \
+      summary="Local Azure emulator — open-source Azure SDK compatible emulator" \
+      url="https://floci.io" \
+      vendor="Floci"
+
 EXPOSE 4577
 
 HEALTHCHECK --interval=5s --timeout=3s --retries=10 \

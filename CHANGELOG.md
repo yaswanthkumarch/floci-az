@@ -9,14 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **event-hubs:** Multi-namespace support — each Event Hubs namespace gets its own isolated Artemis container with dynamically allocated ports, analogous to how the AWS emulator creates one PostgreSQL container per RDS instance; default namespace starts automatically from config
-- **event-hubs:** Namespace management REST API — `GET/PUT/DELETE /{account}-eventhub/namespaces[/{ns}]`; `GET /{account}-eventhub/namespaces/{ns}/connection` returns AMQP/AMQPS ports; `GET /{account}-eventhub/namespaces/{ns}/tls-cert` returns TLS PEM
-- **event-hubs:** `EventHubNamespaceManager` (`@ApplicationScoped`) manages the namespace lifecycle map; `ArtemisManager` removed — its logic is now namespaced in `EventHubNamespaceManager`
-- **event-hubs:** Azure Event Hubs emulation — AMQP 1.0 via Apache ActiveMQ Artemis sidecar (port 5672); TLS AMQP via port 5671 for uamqp/Python SDK; Kafka-compatible access via Redpanda sidecar (port 9093, opt-in with `kafkaEnabled: true`); namespace and event hub entities declared via `entities` config; `$Default` consumer group created automatically
-- **event-hubs:** ANYCAST + exclusive divert topology provisioned at startup via Artemis Jolokia API — durable queues per consumer group ensure messages persist before a receiver connects
+- **cosmos:** Azure Cosmos DB SQL API emulator — always-on at `/{account}-cosmos/`; databases, containers, and document CRUD; full SQL dialect (`SELECT`, `WHERE`, `ORDER BY`, `GROUP BY`, `OFFSET LIMIT`, `SELECT TOP`, `SELECT DISTINCT`); aggregates (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`); string, math, array, and type-check functions; named parameters; `PATCH` document operations; transactional batch; server-side pagination with continuation tokens; system properties (`_rid`, `_self`, `_etag`, `_ts`) auto-generated on every write ([#16](https://github.com/floci-io/floci-az/pull/16))
+- **cosmos:** Modular multi-API engine support — opt-in per API via environment variable; Docker-backed: MongoDB (`mongo:7`), PostgreSQL/Citus (`citusdata/citus`), Cassandra (`scylladb/scylla:6.2`), Gremlin (`tinkerpop/gremlin-server`); embedded (no Docker): NoSQL in-process SQL engine, Table in-memory OData; each engine exposes a `/connect` endpoint returning its connection string ([#16](https://github.com/floci-io/floci-az/pull/16))
+- **cosmos:** HTTPS proxy on port `4578` with bundled self-signed certificate (`CN=localhost`, valid 100 years) — required for the Azure Cosmos DB Java SDK which enforces TLS in gateway mode; no certificate import needed ([#16](https://github.com/floci-io/floci-az/pull/16))
+- **cosmos:** Java compatibility tests — `CosmosCompatibilityTest` (SQL API CRUD + queries), `CosmosNoSqlEngineCompatibilityTest` (embedded NoSQL engine), `CosmosMongoEngineCompatibilityTest`, `CosmosPostgresEngineCompatibilityTest`, `CosmosCassandraEngineCompatibilityTest`, `CosmosGremlinEngineCompatibilityTest`, `CosmosTableEngineCompatibilityTest` ([#16](https://github.com/floci-io/floci-az/pull/16))
+- **table:** OData `$filter` / `$select` / `$top` query support — operators `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `and`, `or`, `not`; functions `startswith`, `endswith`, `substringof`; typed property annotations (`Edm.Int64`, `Edm.DateTime`, `Edm.Guid`, etc.)
+- **table:** ETag optimistic concurrency — `If-Match: *` and `If-Match: "<etag>"` honoured on `PUT`, `MERGE`, `PATCH`, and `DELETE`; `412 Precondition Failed` on mismatch
+- **table:** Entity Group Transactions (`$batch`) — atomic execution of multiple operations against a single partition key; full rollback on any failure; standard Azure `multipart/mixed` wire format
+- **table:** Server-side pagination with `NextPartitionKey` / `NextRowKey` continuation tokens
+- **event-hubs:** Multi-namespace support — each Event Hubs namespace gets its own isolated Artemis container with dynamically allocated ports; default namespace starts on-demand via `PUT /{account}-eventhub/namespaces/{ns}`
+- **event-hubs:** Namespace management REST API — `GET/PUT/DELETE /{account}-eventhub/namespaces[/{ns}]`; `GET /{account}-eventhub/namespaces/{ns}/connection` returns AMQP/AMQPS ports and Kafka bootstrap when running; `GET /{account}-eventhub/namespaces/{ns}/tls-cert` returns TLS PEM
+- **event-hubs:** ANYCAST + exclusive divert topology embedded in `broker.xml` — durable queues per consumer group ensure messages persist before a receiver connects; Jolokia setup runs asynchronously after broker start
 - **event-hubs:** `ArtemisConfigGenerator` generates `broker.xml` per namespace; `ArtemisTlsGenerator` generates self-signed RSA-2048 cert + PKCS12 keystore per namespace for TLS AMQP
-- **event-hubs:** 6 Python (`uamqp`) compatibility tests covering send/receive, consumer groups, partitions, and high-throughput delivery
+- **event-hubs:** Java AMQP compatibility tests (`EventHubCompatibilityTest`, `EventHubNamespaceManagementTest`) replacing previous Python uamqp suite
+- **event-hubs:** Kafka (`EventHubsKafkaManager`) starts on-demand when a namespace is created with `kafkaEnabled: true`; idempotent, synchronized, resolves broker address correctly inside and outside Docker
 - **docker:** `ContainerSpec`, `ContainerBuilder`, `ContainerLifecycleManager`, `ImageCacheService`, `PortAllocator` ported from floci — shared container infrastructure for sidecar-based services
+
+### Changed
+
+- **docs:** README restructured to match floci (aws-local) format — nav links, "What is?", Features section, SDK examples collapsed per language, Migrating from Azurite, Star History, Contributors
+- **docs:** `mkdocs.yml` — added Cosmos DB service page; moved `application.yml Reference` under `Advanced` subsection
+- **docker:** Added OCI image labels (`org.opencontainers.image.*`, `io.k8s.*`, `io.openshift.*`) to `Dockerfile.jvm-package` and `Dockerfile.native-package`
+- **build:** Removed stale `test-appconfig` Makefile target and `APPCONFIG_DIR` variable — AppConfig tests are covered by `test-python` and `test-java-compat`
 
 ## [0.2.0] - 2026-05-15
 

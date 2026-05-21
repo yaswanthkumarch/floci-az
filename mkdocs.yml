@@ -62,8 +62,9 @@ nav:
   - Configuration:
     - Docker Compose: configuration/docker-compose.md
     - Ports Reference: configuration/ports.md
-    - application.yml Reference: configuration/application-yml.md
     - Storage Modes: configuration/storage.md
+    - Advanced:
+      - application.yml Reference: configuration/advanced/application-yml.md
   - Services:
     - Overview: services/index.md
     - Blob Storage: services/blob.md
@@ -73,5 +74,6 @@ nav:
     - App Configuration: services/app-config.md
     - Key Vault: services/key-vault.md
     - Event Hubs: services/event-hub.md
+    - Cosmos DB: services/cosmos.md
   - Contributing: contributing.md
   - Changelog: changelog.md
