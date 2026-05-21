@@ -5,9 +5,9 @@ quarkus:
       format: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] %s%e%n"
   http:
     port: ${floci-az.port}
-    ssl-port: ${floci-az.ssl-port}
-    insecure-requests: enabled   # keep plain HTTP on 4577 — nothing changes for existing clients
     host: 0.0.0.0
+    ssl-port: ${floci-az.ssl-port}
+    insecure-requests: enabled   # keep plain HTTP on 4577 alongside HTTPS on 4578
     ssl:
       certificate:
         key-store-file: certs/floci-az.p12
@@ -22,6 +22,9 @@ quarkus:
 floci-az:
   port: 4577
   ssl-port: 4578
+  tls:
+    enabled: false    # set to true to enable HTTPS (both HTTP+HTTPS on same port via proxy)
+    self-signed: true  # auto-generate self-signed cert
   base-url: http://localhost:4577
   base-url-https: https://localhost:4578
   storage:
@@ -48,13 +51,15 @@ floci-az:
         flush-interval-ms: 5000
       cosmos:
         flush-interval-ms: 5000
+      key-vault:
+        flush-interval-ms: 5000
 
   dns:
-    # When floci-az runs inside Docker, an embedded DNS server is started on port 53
-    # and injected into every Azure Functions container as their resolver. It resolves
-    # *.hostname (above) and any extra suffixes to floci-az's Docker network IP.
-    # extra-suffixes:
-    #   - myapp.internal
+  # When floci-az runs inside Docker, an embedded DNS server is started on port 53
+  # and injected into every Azure Functions container as their resolver. It resolves
+  # *.hostname (above) and any extra suffixes to floci-az's Docker network IP.
+  # extra-suffixes:
+  #   - myapp.internal
 
   docker:
     docker-host: unix:///var/run/docker.sock
@@ -77,6 +82,41 @@ floci-az:
       enabled: true
     cosmos:
       enabled: true
+      engines:
+        startup: on-demand
+        default-api: nosql
+        nosql:
+          enabled: false
+          # Embedded
+        mongodb:
+          enabled: false
+          # image: mongo:7
+        postgresql:
+          enabled: false
+          # image: citusdata/citus:12
+        cassandra:
+          enabled: false
+          # image: scylladb/scylla:6.2
+        gremlin:
+          enabled: false
+          # image: tinkerpop/gremlin-server
+        table:
+          enabled: false
+          # Embedded
+    key-vault:
+      enabled: true
+    event-hub:
+      enabled: true
+      default-namespace: emulatorNs1
+      entities: "eh1:4"
+      amqp-port: 5672
+      amqp-tls-port: 5671
+      kafka-enabled: false
+      kafka-port: 9093
+      artemis-image: "apache/activemq-artemis:latest"
+      redpanda-image: "redpandadata/redpanda:latest"
+      consumer-groups: "$Default,my-consumer-group"
+    # docker-network:  # optional: shared Docker network for sidecar containers
 
   auth:
     # dev: accept any credentials without signature validation
