@@ -321,6 +321,14 @@ public class ServiceBusHandler implements AzureServiceHandler {
             return Response.ok(sb.toString()).type("application/json").build();
         }
 
+        if (config.services().serviceBus().mocked()) {
+            ServiceBusNamespaceManager.NamespaceState state =
+                    namespaceManager.startMockedNamespace(namespaceName);
+            StringBuilder json = new StringBuilder();
+            appendNamespaceJson(json, namespaceName, state);
+            return Response.status(201).entity(json.toString()).type("application/json").build();
+        }
+
         EmulatorConfig.ServiceBusConfig sb = config.services().serviceBus();
         int amqpPort = sb.amqpPort();
         int amqpTlsPort = sb.amqpTlsPort();
@@ -436,9 +444,6 @@ public class ServiceBusHandler implements AzureServiceHandler {
         }
 
         if (namespaceManager.getNamespace(namespace).isEmpty()) {
-            if (config.services().serviceBus().mocked()) {
-                return namespaceNotStarted(namespace);
-            }
             lazyStartNamespace(namespace);
         }
         EmulatorConfig.ServiceBusConfig sb = config.services().serviceBus();
@@ -510,9 +515,6 @@ public class ServiceBusHandler implements AzureServiceHandler {
         }
 
         if (namespaceManager.getNamespace(namespace).isEmpty()) {
-            if (config.services().serviceBus().mocked()) {
-                return namespaceNotStarted(namespace);
-            }
             lazyStartNamespace(namespace);
         }
         ServiceBusModels.TopicEntity topic = ServiceBusModels.TopicEntity.defaults(topicName);
@@ -822,7 +824,7 @@ public class ServiceBusHandler implements AzureServiceHandler {
      * In practice there will only be one namespace active at a time.
      */
     private Optional<String> resolveActiveNamespace() {
-        if (namespaceManager.listNamespaces().isEmpty() && !config.services().serviceBus().mocked()) {
+        if (namespaceManager.listNamespaces().isEmpty()) {
             lazyStartNamespace(DEFAULT_NAMESPACE);
         }
         return namespaceManager.listNamespaces().keySet().stream().findFirst();
@@ -831,6 +833,10 @@ public class ServiceBusHandler implements AzureServiceHandler {
     private synchronized void lazyStartNamespace(String name) {
         if (namespaceManager.getNamespace(name).isPresent()) return;
         EmulatorConfig.ServiceBusConfig sb = config.services().serviceBus();
+        if (sb.mocked()) {
+            namespaceManager.startMockedNamespace(name);
+            return;
+        }
         try {
             namespaceManager.startNamespace(name, sb.amqpPort(), sb.amqpTlsPort());
         } catch (Exception e) {
@@ -847,6 +853,7 @@ public class ServiceBusHandler implements AzureServiceHandler {
           .append(",\"amqpPort\":").append(state.amqpHostPort())
           .append(",\"amqpsPort\":").append(state.amqpsHostPort())
           .append(",\"tlsCertPem\":\"").append(certPem).append("\"")
+          .append(",\"mocked\":").append(state.mocked())
           .append("}");
     }
 

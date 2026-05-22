@@ -126,7 +126,7 @@ floci-az:
       default-port: 0        # 0 = OS picks a free port per server (recommended)
     service-bus:
       enabled: true
-      mocked: false
+      mocked: true
       amqp-port: 5673
       amqp-tls-port: 5674
       artemis-image: "apache/activemq-artemis:latest"

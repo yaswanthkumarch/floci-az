@@ -37,6 +37,8 @@ class ServiceBusCompatibilityTest {
     @BeforeAll
     void ensureNamespace() throws Exception {
         EmulatorConfig.ensureServiceBusNamespace();
+        Assumptions.assumeFalse(EmulatorConfig.serviceBusMocked,
+                "Service Bus is in mocked mode — no Artemis broker, AMQP tests skipped");
     }
 
     // ── Queue tests ───────────────────────────────────────────────────────────

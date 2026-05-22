@@ -35,7 +35,7 @@ public class ServiceBusConfigGenerator {
                 .elem("security-enabled", false)
                 .start("acceptors")
                   .startAttr("acceptor", "name", "amqp")
-                    .raw("tcp://0.0.0.0:" + AMQP_INTERNAL_PORT + "?protocols=AMQP;saslMechanisms=ANONYMOUS,PLAIN")
+                    .raw("tcp://0.0.0.0:" + AMQP_INTERNAL_PORT + "?protocols=AMQP;saslMechanisms=ANONYMOUS,PLAIN;maxMessageSize=1048576")
                   .end("acceptor")
                   .startAttr("acceptor", "name", "amqps")
                     .raw("tcp://0.0.0.0:" + AMQPS_INTERNAL_PORT + "?protocols=AMQP"
@@ -44,7 +44,8 @@ public class ServiceBusConfigGenerator {
                         + ";keyStorePassword=" + ArtemisTlsGenerator.KEYSTORE_PASSWORD
                         + ";keyStoreType=PKCS12"
                         + ";needClientAuth=false"
-                        + ";saslMechanisms=ANONYMOUS,PLAIN")
+                        + ";saslMechanisms=ANONYMOUS,PLAIN"
+                        + ";maxMessageSize=1048576")
                   .end("acceptor")
                 .end("acceptors")
                 .start("address-settings")
@@ -55,6 +56,14 @@ public class ServiceBusConfigGenerator {
                     .elem("auto-create-addresses", false)
                   .end("address-setting")
                 .end("address-settings")
+                .start("diverts")
+                  .startAttr("divert", "name", "cbs-put-token-intercept")
+                    .elem("address", "$cbs")
+                    .elem("forwarding-address", "$cbs-intercept")
+                    .selfClose("filter", "string", "operation = 'put-token'")
+                    .elem("exclusive", true)
+                  .end("divert")
+                .end("diverts")
                 .start("addresses")
                   .startAttr("address", "name", "DLQ")
                     .start("anycast")
@@ -64,6 +73,11 @@ public class ServiceBusConfigGenerator {
                   .startAttr("address", "name", "$cbs")
                     .start("anycast")
                       .selfClose("queue", "name", "$cbs")
+                    .end("anycast")
+                  .end("address")
+                  .startAttr("address", "name", "$cbs-intercept")
+                    .start("anycast")
+                      .selfClose("queue", "name", "$cbs-intercept")
                     .end("anycast")
                   .end("address")
                   .startAttr("address", "name", "cbs-client-reply-to")

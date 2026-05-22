@@ -42,6 +42,7 @@ public class ServiceBusNamespaceManager {
     /**
      * Immutable snapshot of a running namespace.
      *
+     * @param mocked       true when no real broker is running (management API only)
      * @param jolokiaHost  hostname/IP to reach Jolokia from floci-az
      * @param jolokiaPort  host-side port for the Artemis Jolokia console
      */
@@ -51,7 +52,8 @@ public class ServiceBusNamespaceManager {
             int amqpsHostPort,
             String tlsCertPem,
             String jolokiaHost,
-            int jolokiaPort) {}
+            int jolokiaPort,
+            boolean mocked) {}
 
     private final ConcurrentHashMap<String, NamespaceState> namespaces = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ServiceBusCbsResponder> cbsResponders = new ConcurrentHashMap<>();
@@ -119,21 +121,30 @@ public class ServiceBusNamespaceManager {
         waitForPort(amqpEndpoint, "AMQP");
         waitForPort(amqpsEndpoint, "AMQPS");
 
+        ServiceBusCbsResponder cbs = new ServiceBusCbsResponder(amqpEndpoint.host(), amqpEndpoint.port());
+        cbs.start();
+        cbsResponders.put(namespaceName, cbs);
+
         NamespaceState state = new NamespaceState(
                 containerId,
                 amqpEndpoint.port(),
                 amqpsEndpoint.port(),
                 tls.certPem(),
                 jolokiaEndpoint.host(),
-                jolokiaEndpoint.port());
+                jolokiaEndpoint.port(),
+                false);
         namespaces.put(namespaceName, state);
-
-        ServiceBusCbsResponder cbs = new ServiceBusCbsResponder(amqpEndpoint.host(), amqpEndpoint.port());
-        cbs.start();
-        cbsResponders.put(namespaceName, cbs);
 
         LOG.infov("Service Bus namespace ''{0}'' ready: amqp:{1}, amqps:{2}",
                 namespaceName, amqpEndpoint, amqpsEndpoint);
+        return state;
+    }
+
+    /** Registers a mocked namespace with no backing broker — management API only. */
+    public NamespaceState startMockedNamespace(String namespaceName) {
+        NamespaceState state = new NamespaceState(null, 0, 0, "", "", 0, true);
+        namespaces.put(namespaceName, state);
+        LOG.infov("Registered mocked Service Bus namespace ''{0}'' (no AMQP broker)", namespaceName);
         return state;
     }
 
@@ -146,8 +157,10 @@ public class ServiceBusNamespaceManager {
         if (cbs != null) {
             cbs.stop();
         }
-        lifecycleManager.stopAndRemove(state.containerId(), null);
-        LOG.infov("Stopped Artemis container for Service Bus namespace ''{0}''", namespaceName);
+        if (!state.mocked() && state.containerId() != null) {
+            lifecycleManager.stopAndRemove(state.containerId(), null);
+            LOG.infov("Stopped Artemis container for Service Bus namespace ''{0}''", namespaceName);
+        }
         return true;
     }
 
@@ -249,6 +262,9 @@ public class ServiceBusNamespaceManager {
         NamespaceState state = namespaces.get(namespaceName);
         if (state == null) {
             throw new IllegalStateException("Service Bus namespace not running: " + namespaceName);
+        }
+        if (state.mocked()) {
+            return;
         }
         String baseUrl = "http://" + state.jolokiaHost() + ":" + state.jolokiaPort() + "/console/jolokia";
         String auth = Base64.getEncoder().encodeToString(

@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.*;
 
 /**
  * Verifies Service Bus lazy namespace auto-start behavior:
@@ -78,6 +79,8 @@ class ServiceBusLazyStartTest {
     @Order(3)
     @DisplayName("AMQP send and receive work after lazy start")
     void amqpSendReceive_afterLazyStart() {
+        assumeFalse(EmulatorConfig.serviceBusMocked,
+                "Service Bus is in mocked mode — no Artemis broker, AMQP not available");
         String payload = "lazy-payload-" + UUID.randomUUID();
 
         try (ServiceBusSenderClient sender = EmulatorConfig.serviceBusClientBuilder()

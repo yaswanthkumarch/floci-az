@@ -218,6 +218,13 @@ public final class EmulatorConfig {
     static int serviceBusAmqpsPort = 0;
 
     /**
+     * True when the emulator is in mocked Service Bus mode (no Artemis broker started).
+     * AMQP tests should be skipped when this is true.
+     * Set by {@link #ensureServiceBusNamespace()}.
+     */
+    static boolean serviceBusMocked = false;
+
+    /**
      * Starts a Service Bus namespace on-demand via the floci-az management API.
      * Idempotent: returns 200 if the namespace already exists.
      *
@@ -260,6 +267,10 @@ public final class EmulatorConfig {
             } else {
                 serviceBusAmqpsPort = ((Number) json.get("amqpsPort")).intValue();
             }
+
+            // Detect mocked mode (no Artemis broker) — AMQP tests should be skipped.
+            Object mockedValue = json.get("mocked");
+            serviceBusMocked = Boolean.TRUE.equals(mockedValue);
 
             // Install the Artemis self-signed cert so proton-j can verify it over TLS.
             String certPem = (String) json.get("tlsCertPem");

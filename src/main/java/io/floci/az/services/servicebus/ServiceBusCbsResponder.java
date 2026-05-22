@@ -33,7 +33,7 @@ public class ServiceBusCbsResponder {
 
     private static final Logger LOG = Logger.getLogger(ServiceBusCbsResponder.class);
     private static final String CBS_ADDRESS = "$cbs";
-    private static final String REPLY_ADDRESS = "cbs-client-reply-to";
+    private static final String CBS_INTERCEPT_ADDRESS = "$cbs-intercept";
 
     private final String host;
     private final int port;
@@ -102,14 +102,14 @@ public class ServiceBusCbsResponder {
 
             Receiver receiver = session.receiver("cbs-receiver");
             Source src = new Source();
-            src.setAddress(CBS_ADDRESS);
+            src.setAddress(CBS_INTERCEPT_ADDRESS);
             receiver.setSource(src);
             receiver.open();
             receiver.flow(100);
 
             responseSender = session.sender("cbs-reply-sender");
             Target tgt = new Target();
-            tgt.setAddress(REPLY_ADDRESS);
+            tgt.setAddress(CBS_ADDRESS);
             responseSender.setTarget(tgt);
             responseSender.open();
         }
