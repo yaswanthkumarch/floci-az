@@ -12,6 +12,7 @@ RUN mvn dependency:go-offline -q
 
 COPY src/ src/
 RUN mvn test-compile -q
+RUN mvn surefire:test -Dtest=nonexistent 2>/dev/null || true
 
 ENV FLOCI_AZ_ENDPOINT=http://floci-az:4577
 ENV EVENTHUB_HOST=floci-az-artemis-emulatorNs1
