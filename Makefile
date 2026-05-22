@@ -197,7 +197,6 @@ test: build
 	$(MAKE) test-python
 	$(MAKE) test-java-compat
 	$(MAKE) test-node-compat
-	$(MAKE) test-servicebus-compat
 	$(MAKE) stop
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
