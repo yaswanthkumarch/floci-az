@@ -643,4 +643,9 @@ public class KeyVaultHandler implements AzureServiceHandler {
             return null;
         }
     }
+
+    /** Wipes all Key Vault data — used by {@code POST /_admin/reset}. */
+    public void clearAll() {
+        store.clear();
+    }
 }
