@@ -707,12 +707,12 @@ The [`compatibility-tests`](./compatibility-tests/) directory validates Floci AZ
 | Module               | Language | SDK                                                                            | Tests |
 |----------------------|----------|--------------------------------------------------------------------------------|------:|
 | `sdk-test-python`    | Python 3 | azure-storage-blob / queue / data-tables / cosmos                              |    42 |
-| `sdk-test-java`      | Java 21  | Azure SDK for Java (BOM 1.2.28) + App Configuration + Functions management API |    92 |
+| `sdk-test-java`      | Java 25  | Azure SDK for Java (BOM 1.2.28) + App Configuration + Functions management API |    92 |
 | `sdk-test-node`      | Node.js  | @azure/storage-blob / storage-queue / data-tables / cosmos                     |    41 |
 | `sdk-test-appconfig` | Python 3 | azure-appconfiguration 1.7.1                                                   |    36 |
 | `sdk-test-keyvault`  | Python 3 | azure-keyvault-secrets 4.11.0                                                  |    24 |
 | `sdk-test-eventhub`  | Python 3 | azure-eventhub 5.11.0                                                          |     7 |
-| Cosmos engines       | Java 21  | DataStax CQL · MongoDB driver · PostgreSQL JDBC · Gremlin driver (Docker)      |    36 |
+| Cosmos engines       | Java 25  | DataStax CQL · MongoDB driver · PostgreSQL JDBC · Gremlin driver (Docker)      |    36 |
 
 Run all compatibility tests against a running container:
 
