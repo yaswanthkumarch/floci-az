@@ -89,6 +89,11 @@ public class ArmHandler implements AzureServiceHandler {
 
         LOG.debugf("ArmHandler %s %s", method, path);
 
+        // ── Network Provider (subscription & resource-group levels) ───────────
+        if (path.contains("/providers/Microsoft.Network/")) {
+            return networkHandler.handleArm(req, path, method, extractSub(path));
+        }
+
         // ── Subscription ──────────────────────────────────────────────────────
         if (path.matches("subscriptions/[^/?]+") ||
             path.matches("subscriptions/[^/?]+\\?.*")) {
